@@ -39,6 +39,13 @@ static u8 * format_srv6_live_a_localsid_trace (u8 * s, va_list * args)
 
 vlib_node_registration_t srv6_live_a_localsid_node;
 
+#define foreach_srv6_live_a_localsid_counter \
+_(PROCESSED, "srv6-live-live-a-localsid processed packets") \
+_(NO_INNER_HEADER, "(SR-Error) No inner IP header")   \
+_(NO_LS, "(Error) No Last SID (Segments Left >0)") \
+_(DUPLICATE, "(Drop) Duplicate suppression") \
+_(NO_SRH, "(Error) No SRH.")
+
 #endif /* CLIB_MARCH_VARIANT */
 
 typedef enum {
