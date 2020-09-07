@@ -63,7 +63,7 @@ typedef struct
   int live;
 } srv6_live_a_localsid_t;
 
-srv6_live_a_main_t srv6_live_a_main;
+extern srv6_live_a_main_t srv6_live_a_main;
 
 format_function_t format_srv6_live_a_localsid;
 unformat_function_t unformat_srv6_live_a_localsid;
