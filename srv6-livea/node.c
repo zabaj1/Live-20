@@ -1,5 +1,7 @@
 /*
- * Copyright (c) 2015 Cisco and/or its affiliates.
+ * node.c - skeleton vpp engine plug-in dual-loop node skeleton
+ *
+ * Copyright (c) 2016 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -16,11 +18,13 @@
 #include <vnet/vnet.h>
 #include <vnet/pg/pg.h>
 #include <vppinfra/error.h>
-#include <srv6-livea/live_a.h>
+#include <srv6-livea/srv6-livea.h>
 
 typedef struct {
   u32 localsid_index;
 } srv6_live_a_localsid_trace_t;
+
+#ifndef CLIB_MARCH_VARIANT
 
 /* packet trace format function */
 static u8 * format_srv6_live_a_localsid_trace (u8 * s, va_list * args)
@@ -35,13 +39,7 @@ static u8 * format_srv6_live_a_localsid_trace (u8 * s, va_list * args)
 
 vlib_node_registration_t srv6_live_a_localsid_node;
 
-#define foreach_srv6_live_a_localsid_counter \
-_(PROCESSED, "srv6-live-live-a-localsid processed packets") \
-_(NO_INNER_HEADER, "(SR-Error) No inner IP header")   \
-_(NO_LS, "(Error) No Last SID (Segments Left >0)") \
-_(DUPLICATE, "(Drop) Duplicate suppression") \
-_(NO_SRH, "(Error) No SRH.")
-
+#endif /* CLIB_MARCH_VARIANT */
 
 typedef enum {
 #define _(sym,str) SRV6_LIVE_A_LOCALSID_COUNTER_##sym,
@@ -50,11 +48,13 @@ typedef enum {
   SRV6_LIVE_A_LOCALSID_N_COUNTERS,
 } srv6_live_a_localsid_counters;
 
+#ifndef CLIB_MARCH_VARIANT
 static char * srv6_live_a_localsid_counter_strings[] = {
 #define _(sym,string) string,
   foreach_srv6_live_a_localsid_counter
 #undef _
 };
+#endif /* CLIB_MARCH_VARIANT */
 
 typedef enum {
   SRV6_LIVE_A_LOCALSID_NEXT_ERROR,
@@ -246,6 +246,8 @@ srv6_live_a_localsid_fn (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_fram
   return frame->n_vectors;
 }
 
+/* *INDENT-OFF* */
+#ifndef CLIB_MARCH_VARIANT
 VLIB_REGISTER_NODE (srv6_live_a_localsid_node) = {
   .function = srv6_live_a_localsid_fn,
   .name = "srv6-live-a-localsid",
@@ -260,3 +262,12 @@ VLIB_REGISTER_NODE (srv6_live_a_localsid_node) = {
         [SRV6_LIVE_A_LOCALSID_NEXT_ERROR] = "error-drop",
     },
 };
+#endif /* CLIB_MARCH_VARIANT */
+/* *INDENT-ON* */
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

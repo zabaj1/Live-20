@@ -15,8 +15,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef __included_srv6-livea_h__
-#define __included_srv6-livea_h__
+#ifndef __included_srv6_livea_h__
+#define __included_srv6_livea_h__
 
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
@@ -73,7 +73,7 @@ void srv6_live_a_dpo_unlock (dpo_id_t * dpo);
 
 extern vlib_node_registration_t srv6_live_a_localsid_node;
 
-#endif /* __included_srv6-livea_h__ */
+#endif /* __included_srv6_livea_h__ */
 
 /*
  * fd.io coding-style-patch-verification: ON
