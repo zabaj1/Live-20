@@ -225,7 +225,7 @@ srv6_live_a_localsid_fn (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_fram
       
 
       /* SRH processing */
-      ip6_ext_header_find (vm, b0, ip0, IP_PROTOCOL_IPV6_ROUTE, prev0);
+      ip6_ext_header_find (vm, b0, ip0, IP_PROTOCOL_IPV6_ROUTE, &prev0);
       //ip6_ext_header_find_t (ip0, prev0, sr0, IP_PROTOCOL_IPV6_ROUTE);
       end_decaps_srh_processing (node, b0, ip0, sr0, ls0, &next0);
 
