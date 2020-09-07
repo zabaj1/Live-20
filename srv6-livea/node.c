@@ -19,6 +19,7 @@
 #include <vnet/pg/pg.h>
 #include <vppinfra/error.h>
 #include <srv6-livea/srv6-livea.h>
+#include <vnet/srv6/sr.h>
 
 typedef struct {
   u32 localsid_index;

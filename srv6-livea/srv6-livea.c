@@ -16,6 +16,7 @@
 #include <vnet/vnet.h>
 #include <vnet/plugin/plugin.h>
 #include <srv6-livea/srv6-livea.h>
+#include <vnet/srv6/sr.h>
 
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
