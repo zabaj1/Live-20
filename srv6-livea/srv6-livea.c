@@ -197,15 +197,6 @@ srv6_live_a_init (vlib_main_t * vm)
 VLIB_INIT_FUNCTION (srv6_live_a_init);
 
 /* *INDENT-OFF* */
-VNET_FEATURE_INIT (srv6-livea, static) =
-{
-  .arc_name = "device-input",
-  .node_name = "srv6-livea",
-  .runs_before = VNET_FEATURES ("ethernet-input"),
-};
-/* *INDENT-ON */
-
-/* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
   .version = VPP_BUILD_VER,
   .description = "SRv6 Live-Live A Localsid",
