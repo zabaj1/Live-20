@@ -119,7 +119,7 @@ end_decaps_srh_processing (vlib_node_runtime_t * node,
         u16 packet_sequence_number;
 
         /* Pointer to the last segment in the DA */
-        sids = sr0->segments + (sr0->first_segment);
+        sids = sr0->segments + (sr0->last_entry);
         live_tlv = (live_tlv_t *) (sids + 1);
         /* Pointer to the flowID in the SID of arrived packet */
         
