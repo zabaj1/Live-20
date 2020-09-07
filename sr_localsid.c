@@ -1824,7 +1824,7 @@ sr_localsid_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
               clib_memcpy (tr->sr, sr0->segments, sr0->length * 8);
               sr0->length += sizeof(live_tlv_t)/8;
               live_tlv_t * p0;
-              p0 = (live_tlv_t *)(((sr0->segments)+(sr0->first_segment)) +1);
+              p0 = (live_tlv_t *)(((sr0->segments)+(sr0->last_entry)) +1);
               tr->type = p0->type;
               tr->length = p0->length;
               tr->flow = clib_net_to_host_u32(p0->flow);
