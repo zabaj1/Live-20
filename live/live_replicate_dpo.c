@@ -632,12 +632,13 @@ const static dpo_vft_t rep_vft = {
  */
 const static char* const live_replicate_ip6_nodes[] =
 {
-    "ip6-livereplicate",
+    "ip6-live-replicate",
     NULL,
 };
-const static char* const live_replicate_mpls_nodes[DPO_PROTO_NUM] =
+
+const static char *const *const live_replicate_nodes[DPO_PROTO_NUM] =
 {
-    [DPO_PROTO_IP6]  = live_replicate_ip6_nodes,
+	[DPO_PROTO_IP6] = live_replicate_ip6_nodes,
 };
 
 static clib_error_t *
