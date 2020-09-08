@@ -15,7 +15,6 @@ add_vpp_plugin(live
   SOURCES
   live.c
   node.c
-  live_periodic.c
   live.h
 
   MULTIARCH_SOURCES
