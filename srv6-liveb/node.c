@@ -124,7 +124,7 @@ end_decaps_srh_processing (vlib_main_t *vm, vlib_node_runtime_t * node,
       u16 window_length = 64;
 
       /* Pointer to the TLV */
-      sids = sr0->segments + (sr0->first_segment);
+      sids = sr0->segments + (sr0->last_entry);
       live_tlv = (live_tlv_t *) (sids + 1);
       /* Pointer to the flowID in the SID of arrived packet */      
       *packet_flow_id = clib_net_to_host_u32(live_tlv->flow);
@@ -286,91 +286,6 @@ srv6_live_b_localsid_fn (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_fram
       /* SRH processing */
       ip6_ext_header_find (vm, b0, ip0, IP_PROTOCOL_IPV6_ROUTE, &prev0);
       //ip6_ext_header_find_t (ip0, prev0, sr0, IP_PROTOCOL_IPV6_ROUTE);
-      end_decaps_srh_processing (vm, node, b0, ip0, sr0, ls0, &next0, &packet_flow_id, &packet_sequence_number, &last);
-
-      
-      if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED)) 
-      {
-        srv6_live_b_localsid_trace_t *tr = vlib_add_trace (vm, node, b0, sizeof (*tr));
-        tr->localsid_index = ls0 - sm->localsids;
-        tr->flow_id = packet_flow_id ;
-        tr->seq_num = packet_sequence_number;
-        tr->last = last;
-      }
-
-      /* This increments the SRv6 per LocalSID counters.*/
-      vlib_increment_combined_counter
-        (((next0 == SRV6_LIVE_B_LOCALSID_NEXT_ERROR) ? &(sm->sr_ls_invalid_counters) : &(sm->sr_ls_valid_counters)),
-        thread_index,
-        ls0 - sm->localsids,
-        1, vlib_buffer_length_in_chain (vm, b0));
-
-      vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next, 
-        n_left_to_next, bi0, next0);
-
-      pkts_swapped ++;
-    }
-    vlib_put_next_frame (vm, node, next_index, n_left_to_next);
-
-  }
-
-  return frame->n_vectors;
-}/*
- * @brief SRv6 Live-Live B Localsid graph node
- * WARNING: YOU MUST DO THE DUAL LOOP
- */
-static uword
-srv6_live_b_localsid_fn (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
-{
-  u32 n_left_from, * from, * to_next;
-  u32 next_index;
-  u32 pkts_swapped = 0;
-  
-  ip6_sr_main_t * sm = &sr_main;
-
-  from = vlib_frame_vector_args (frame);
-  n_left_from = frame->n_vectors;
-  next_index = node->cached_next_index;
-  u32 thread_index = vlib_get_thread_index ();
-
-  while (n_left_from > 0)
-  {
-    u32 n_left_to_next;
-
-    vlib_get_next_frame (vm, node, next_index,
-       to_next, n_left_to_next);
-
-    while (n_left_from > 0 && n_left_to_next > 0)
-    {
-      u32 bi0;
-      vlib_buffer_t * b0;
-      ip6_header_t * ip0 = 0;
-      ip6_sr_header_t * sr0;
-      ip6_ext_header_t *prev0;
-      u32 next0 = SRV6_LIVE_B_LOCALSID_NEXT_IP6_REWRITE;
-      ip6_sr_localsid_t *ls0;
-      
-      u32 packet_flow_id;
-      u16 packet_sequence_number;
-      u16 last;
-
-      bi0 = from[0];
-      to_next[0] = bi0;
-      from += 1;
-      to_next += 1;
-      n_left_from -= 1;
-      n_left_to_next -= 1;
-
-      b0 = vlib_get_buffer (vm, bi0);
-      ip0 = vlib_buffer_get_current (b0);
-      sr0 = (ip6_sr_header_t *)(ip0+1);
-
-      /* Lookup the SR End behavior based on IP DA (adj) */
-      ls0 = pool_elt_at_index (sm->localsids, vnet_buffer(b0)->ip.adj_index[VLIB_TX]);
-      
-
-      /* SRH processing */
-      ip6_ext_header_find_t (ip0, prev0, sr0, IP_PROTOCOL_IPV6_ROUTE);
       end_decaps_srh_processing (vm, node, b0, ip0, sr0, ls0, &next0, &packet_flow_id, &packet_sequence_number, &last);
 
       
