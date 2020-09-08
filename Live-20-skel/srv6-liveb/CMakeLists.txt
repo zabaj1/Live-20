@@ -16,15 +16,5 @@ add_vpp_plugin(srv6-liveb
   SOURCES
   srv6-liveb.c
   node.c
-  srv6-liveb_periodic.c
   srv6-liveb.h
-
-  MULTIARCH_SOURCES
-  node.c
-
-  API_FILES
-  srv6-liveb.api
-
-  API_TEST_SOURCES
-  srv6-liveb_test.c
 )
