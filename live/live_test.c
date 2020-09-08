@@ -17,6 +17,7 @@
 #include <vlibmemory/api.h>
 #include <vppinfra/error.h>
 #include <stdbool.h>
+#include <vnet/srv6/sr.h>
 
 #define __plugin_msg_base live_test_main.msg_id_base
 #include <vlibapi/vat_helper_macros.h>
@@ -60,8 +61,8 @@ static int api_live_enable_disable (vat_main_t * vam)
     
     /* Construct the API message */
     M(LIVE_ENABLE_DISABLE, mp);
-    clib_memcpy(mp->bsid_addr, &bsid, sizeof(ip6_address_t));
-    mp->enable_disable = enable_disable;
+	clib_memcpy(mp->sw_if_index, &bsid, sizeof(ip6_address_t));
+	mp->enable_disable = enable_disable;
 
     /* send it... */
     S(mp);
