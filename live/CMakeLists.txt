@@ -14,10 +14,10 @@
 add_vpp_plugin(live
   SOURCES
   live.c
-  node.c
   live.h
+  node.c
   live_replicate_dpo.c
-  sr_live_policy_rewrite.c
+  live_replicate_dpo.h
 
   API_FILES
   live.api

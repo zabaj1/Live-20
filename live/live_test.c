@@ -1,7 +1,5 @@
 /*
- * live.c - live vpp-api-test plug-in
- *
- * Copyright (c) <current-year> <your-organization>
+ * Copyright (c) 2015 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -40,42 +38,37 @@ live_test_main_t live_test_main;
 
 static int api_live_enable_disable (vat_main_t * vam)
 {
-  unformat_input_t * i = vam->input;
-  int enable_disable = 1;
-  u32 sw_if_index = ~0;
-  vl_api_live_enable_disable_t * mp;
-  int ret;
+    unformat_input_t * i = vam->input;
+    int enable_disable = 1;
+    ip6_address_t bsid;
+    vl_api_live_enable_disable_t * mp;
+    int ret;
 
-  /* Parse args required to build the message */
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "%U", unformat_sw_if_index, vam, &sw_if_index))
-          ;
-        else if (unformat (i, "sw_if_index %d", &sw_if_index))
-          ;
-      else if (unformat (i, "disable"))
-          enable_disable = 0;
-      else
-          break;
+    /* Parse args required to build the message */
+    while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT) {
+   /*     if (unformat (i, "%U", unformat_bsid, vam, &bsid))
+            ;
+	else*/ if (unformat (i, "bsid %d", &bsid))
+	    ;
+        else if (unformat (i, "disable"))
+            enable_disable = 0;
+        else
+            break;
     }
+    
+    
+    
+    /* Construct the API message */
+    M(LIVE_ENABLE_DISABLE, mp);
+    clib_memcpy(mp->bsid_addr, &bsid, sizeof(ip6_address_t));
+    mp->enable_disable = enable_disable;
 
-  if (sw_if_index == ~0)
-    {
-      errmsg ("missing interface name / explicit sw_if_index number \n");
-      return -99;
-    }
+    /* send it... */
+    S(mp);
 
-  /* Construct the API message */
-  M(LIVE_ENABLE_DISABLE, mp);
-  mp->sw_if_index = ntohl (sw_if_index);
-  mp->enable_disable = enable_disable;
-
-  /* send it... */
-  S(mp);
-
-  /* Wait for a reply... */
-  W (ret);
-  return ret;
+    /* Wait for a reply... */
+    W (ret);
+    return ret;
 }
 
 /*
