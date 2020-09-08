@@ -31,7 +31,7 @@
 #include <live/live.api_enum.h>
 #include <live/live.api_types.h>
 
-#define REPLY_MSG_ID_BASE lmp->msg_id_base
+#define REPLY_MSG_ID_BASE sm->msg_id_base
 #include <vlibapi/api_helper_macros.h>
 
 live_main_t live_main;

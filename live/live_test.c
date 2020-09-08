@@ -41,28 +41,32 @@ static int api_live_enable_disable (vat_main_t * vam)
 {
     unformat_input_t * i = vam->input;
     int enable_disable = 1;
-    ip6_address_t bsid;
+    u32 sw_if_index = ~0;
     vl_api_live_enable_disable_t * mp;
     int ret;
 
     /* Parse args required to build the message */
     while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT) {
-   /*     if (unformat (i, "%U", unformat_bsid, vam, &bsid))
-            ;
-	else*/ if (unformat (i, "bsid %d", &bsid))
-	    ;
+        /*     if (unformat (i, "%U", unformat_bsid, vam, &bsid))
+                 ;
+         else*/ if (unformat (i, "sw_if_index %d", &sw_if_index))
+          ;
         else if (unformat (i, "disable"))
             enable_disable = 0;
         else
             break;
     }
-    
-    
-    
+
+    if (sw_if_index == ~0)
+	{
+		errmsg ("missing interface name / explicit sw_if_index number \n");
+		return -99;
+	}
+
     /* Construct the API message */
     M(LIVE_ENABLE_DISABLE, mp);
-	clib_memcpy(mp->sw_if_index, &bsid, sizeof(ip6_address_t));
-	mp->enable_disable = enable_disable;
+    mp->sw_if_index = ntohl (sw_if_index);
+    mp->enable_disable = enable_disable;
 
     /* send it... */
     S(mp);

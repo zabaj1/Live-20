@@ -11,13 +11,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+include_directories(${CMAKE_SOURCE_DIR})
+
+# for generated API headers:
+include_directories(${CMAKE_BINARY_DIR})
+
 add_vpp_plugin(live
   SOURCES
-  live.c
-  live.h
   node.c
+  live.c
   live_replicate_dpo.c
-  live_replicate_dpo.h
 
   API_FILES
   live.api
