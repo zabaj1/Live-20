@@ -1,7 +1,5 @@
 /*
- * srv6-liveb.c - skeleton vpp engine plug-in
- *
- * Copyright (c) <current-year> <your-organization>
+ * Copyright (c) 2016 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -18,156 +16,194 @@
 #include <vnet/vnet.h>
 #include <vnet/plugin/plugin.h>
 #include <srv6-liveb/srv6-liveb.h>
+#include <vnet/srv6/sr.h>
 
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
 #include <vpp/app/version.h>
 #include <stdbool.h>
 
-#include <srv6-liveb/srv6-liveb.api_enum.h>
-#include <srv6-liveb/srv6-liveb.api_types.h>
-
-#define REPLY_MSG_ID_BASE smp->msg_id_base
-#include <vlibapi/api_helper_macros.h>
+unsigned char function_name[] = "SRv6 Live-Live B localsid plugin";
+unsigned char keyword_str[] = "live.b.dx6";
+unsigned char def_str[] = "Live-Live B [Delivery of late arrivals]: Decapsulation and IPv6 Xconnection";
+unsigned char params_str[] = "nh <next-hop> oif <iface-out> ";
 
 srv6-liveb_main_t srv6-liveb_main;
 
-/* Action function shared between message handler and debug CLI */
-
-int srv6-liveb_enable_disable (srv6-liveb_main_t * smp, u32 sw_if_index,
-                                   int enable_disable)
+/*****************************************/
+/* SRv6 LocalSID instantiation and removal functions */
+static int
+srv6_live_b_localsid_creation_fn (ip6_sr_localsid_t * localsid)
 {
-  vnet_sw_interface_t * sw;
-  int rv = 0;
+  srv6_live_b_localsid_t *ls_mem = localsid->plugin_mem;
 
-  /* Utterly wrong? */
-  if (pool_is_free_index (smp->vnet_main->interface_main.sw_interfaces,
-                          sw_if_index))
-    return VNET_API_ERROR_INVALID_SW_IF_INDEX;
+  adj_index_t nh_adj_index = ADJ_INDEX_INVALID;
 
-  /* Not a physical port? */
-  sw = vnet_get_sw_interface (smp->vnet_main, sw_if_index);
-  if (sw->type != VNET_SW_INTERFACE_TYPE_HARDWARE)
-    return VNET_API_ERROR_INVALID_SW_IF_INDEX;
+  /* Step 1: Prepare xconnect adjacency for sending packets to the VNF */
 
-  srv6-liveb_create_periodic_process (smp);
+  /* Retrieve the adjacency corresponding to the (OIF, next_hop) */
+  nh_adj_index = adj_nbr_add_or_lock (FIB_PROTOCOL_IP6,
+				      VNET_LINK_IP6, &ls_mem->nh_addr,
+				      ls_mem->sw_if_index_out);
+  if (nh_adj_index == ADJ_INDEX_INVALID)
+    return -5;
 
-  vnet_feature_enable_disable ("device-input", "srv6-liveb",
-                               sw_if_index, enable_disable, 0, 0);
+  localsid->nh_adj = nh_adj_index;
 
-  /* Send an event to enable/disable the periodic scanner process */
-  vlib_process_signal_event (smp->vlib_main,
-                             smp->periodic_node_index,
-                             SRV6-LIVEB_EVENT_PERIODIC_ENABLE_DISABLE,
-                            (uword)enable_disable);
-  return rv;
+
+  return 0;
 }
 
-static clib_error_t *
-srv6-liveb_enable_disable_command_fn (vlib_main_t * vm,
-                                   unformat_input_t * input,
-                                   vlib_cli_command_t * cmd)
+static int
+srv6_live_b_localsid_removal_fn (ip6_sr_localsid_t * localsid)
 {
-  srv6-liveb_main_t * smp = &srv6-liveb_main;
-  u32 sw_if_index = ~0;
-  int enable_disable = 1;
 
-  int rv;
+  /* Unlock (OIF, NHOP) adjacency (from sr_localsid.c:103) */
+  adj_unlock (localsid->nh_adj);
 
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+  /* Clean up local SID memory */
+  clib_mem_free (localsid->plugin_mem);
+
+  return 0;
+}
+
+/**********************************/
+/* SRv6 LocalSID format functions */
+/*
+ * Prints nicely the parameters of a localsid
+ * Example: print "Table 5"
+ */
+u8 *
+format_srv6_live_b_localsid (u8 * s, va_list * args)
+{
+  srv6_live_b_localsid_t *ls_mem = va_arg (*args, void *);
+
+  vnet_main_t *vnm = vnet_get_main ();
+
+  return (format (s,
+		  "Next-hop:\t%U\n"
+		  "\tOutgoing iface: %U\n",
+		  format_ip6_address, &ls_mem->nh_addr.ip6,
+		  format_vnet_sw_if_index_name, vnm, ls_mem->sw_if_index_out));
+}
+
+/*
+ * Process the parameters of a localsid
+ * Example: process from:
+ * sr localsid address cafe::1 behavior new_srv6_localsid 5
+ * everything from behavior on... so in this case 'new_srv6_localsid 5'
+ * Notice that it MUST match the keyword_str and params_str defined above.
+ */
+uword
+unformat_srv6_live_b_localsid (unformat_input_t * input, va_list * args)
+{
+  void **plugin_mem_p = va_arg (*args, void **);
+  srv6_live_b_localsid_t *ls_mem;
+
+  vnet_main_t *vnm = vnet_get_main ();
+
+  ip46_address_t nh_addr;
+  u32 sw_if_index_out;
+
+  if (unformat (input, "live.b.dx6 nh %U oif %U",
+		unformat_ip6_address, &nh_addr.ip6,
+		unformat_vnet_sw_interface, vnm, &sw_if_index_out))
     {
-      if (unformat (input, "disable"))
-        enable_disable = 0;
-      else if (unformat (input, "%U", unformat_vnet_sw_interface,
-                         smp->vnet_main, &sw_if_index))
-        ;
-      else
-        break;
-  }
+      /* Allocate a portion of memory */
+      ls_mem = clib_mem_alloc_aligned_at_offset (sizeof *ls_mem, 0, 0, 1);
 
-  if (sw_if_index == ~0)
-    return clib_error_return (0, "Please specify an interface...");
+      /* Set to zero the memory */
+      memset (ls_mem, 0, sizeof *ls_mem);
 
-  rv = srv6-liveb_enable_disable (smp, sw_if_index, enable_disable);
+      /* Our brand-new car is ready */
+      clib_memcpy (&ls_mem->nh_addr.ip6, &nh_addr.ip6,
+		   sizeof (ip6_address_t));
+      ls_mem->sw_if_index_out = sw_if_index_out;
 
-  switch(rv)
-    {
-  case 0:
-    break;
-
-  case VNET_API_ERROR_INVALID_SW_IF_INDEX:
-    return clib_error_return
-      (0, "Invalid interface, only works on physical ports");
-    break;
-
-  case VNET_API_ERROR_UNIMPLEMENTED:
-    return clib_error_return (0, "Device driver doesn't support redirection");
-    break;
-
-  default:
-    return clib_error_return (0, "srv6-liveb_enable_disable returned %d",
-                              rv);
+      /* Dont forget to add it to the localsid */
+      *plugin_mem_p = ls_mem;
+      return 1;
     }
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (srv6-liveb_enable_disable_command, static) =
+
+/*************************/
+/* SRv6 LocalSID FIB DPO */
+static u8 *
+format_srv6_live_b_dpo (u8 * s, va_list * args)
 {
-  .path = "srv6-liveb enable-disable",
-  .short_help =
-  "srv6-liveb enable-disable <interface-name> [disable]",
-  .function = srv6-liveb_enable_disable_command_fn,
-};
-/* *INDENT-ON* */
+  index_t index = va_arg (*args, index_t);
+  CLIB_UNUSED (u32 indent) = va_arg (*args, u32);
 
-/* API message handler */
-static void vl_api_srv6-liveb_enable_disable_t_handler
-(vl_api_srv6-liveb_enable_disable_t * mp)
-{
-  vl_api_srv6-liveb_enable_disable_reply_t * rmp;
-  srv6-liveb_main_t * smp = &srv6-liveb_main;
-  int rv;
-
-  rv = srv6-liveb_enable_disable (smp, ntohl(mp->sw_if_index),
-                                      (int) (mp->enable_disable));
-
-  REPLY_MACRO(VL_API_SRV6-LIVEB_ENABLE_DISABLE_REPLY);
+  return (format (s, "SR: live-live b decaps localsid index:[%u]", index));
 }
 
-/* API definitions */
-#include <srv6-liveb/srv6-liveb.api.c>
-
-static clib_error_t * srv6-liveb_init (vlib_main_t * vm)
+void
+srv6_live_b_dpo_lock (dpo_id_t * dpo)
 {
-  srv6-liveb_main_t * smp = &srv6-liveb_main;
-  clib_error_t * error = 0;
-
-  smp->vlib_main = vm;
-  smp->vnet_main = vnet_get_main();
-
-  /* Add our API messages to the global name_crc hash table */
-  smp->msg_id_base = setup_message_id_table ();
-
-  return error;
 }
 
-VLIB_INIT_FUNCTION (srv6-liveb_init);
-
-/* *INDENT-OFF* */
-VNET_FEATURE_INIT (srv6-liveb, static) =
+void
+srv6_live_b_dpo_unlock (dpo_id_t * dpo)
 {
-  .arc_name = "device-input",
-  .node_name = "srv6-liveb",
-  .runs_before = VNET_FEATURES ("ethernet-input"),
+}
+
+const static dpo_vft_t srv6_live_b_vft = {
+  .dv_lock = srv6_live_b_dpo_lock,
+  .dv_unlock = srv6_live_b_dpo_unlock,
+  .dv_format = format_srv6_live_b_dpo,
 };
-/* *INDENT-ON */
+
+const static char *const srv6_live_b_ip6_nodes[] = {
+  "srv6-live-b-localsid",
+  NULL,
+};
+
+const static char *const *const srv6_live_b_nodes[DPO_PROTO_NUM] = {
+  [DPO_PROTO_IP6] = srv6_live_b_ip6_nodes,
+};
+
+/**********************/
+static clib_error_t *
+srv6_live_b_init (vlib_main_t * vm)
+{
+  srv6_live_b_main_t *sm = &srv6_live_b_main;
+  int rv = 0;
+
+  mhash_init (&sm->flow_window_hash, sizeof(uword), sizeof(u32));
+  
+  sm->vlib_main = vm;
+  sm->vnet_main = vnet_get_main ();
+
+  /* Create DPO */
+  sm->srv6_live_b_dpo_type = dpo_register_new_type (&srv6_live_b_vft, srv6_live_b_nodes);
+
+  /* Register SRv6 LocalSID */
+  rv = sr_localsid_register_function (vm,
+				      function_name,
+				      keyword_str,
+				      def_str,
+				      params_str,
+				      &sm->srv6_live_b_dpo_type,
+				      format_srv6_live_b_localsid,
+				      unformat_srv6_live_b_localsid,
+				      srv6_live_b_localsid_creation_fn,
+				      srv6_live_b_localsid_removal_fn);
+  if (rv < 0)
+    clib_error_return (0, "SRv6 LocalSID function could not be registered.");
+  else
+    sm->srv6_localsid_behavior_id = rv;
+
+  return 0;
+}
+
+VLIB_INIT_FUNCTION (srv6_live_b_init);
 
 /* *INDENT-OFF* */
-VLIB_PLUGIN_REGISTER () =
-{
+VLIB_PLUGIN_REGISTER () = {
   .version = VPP_BUILD_VER,
-  .description = "srv6-liveb plugin description goes here",
+  .description = "SRv6 Live-Live B Localsid: Delivery of late arrivals ",
 };
 /* *INDENT-ON* */
 
