@@ -1,8 +1,6 @@
 
 /*
- * srv6-liveb.h - skeleton vpp engine plug-in header file
- *
- * Copyright (c) <current-year> <your-organization>
+ * Copyright (c) 2016 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -15,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef __included_srv6-liveb_h__
-#define __included_srv6-liveb_h__
+#ifndef __included_srv6_liveb_h__
+#define __included_srv6_liveb_h__
 
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
@@ -25,34 +23,60 @@
 #include <vppinfra/hash.h>
 #include <vppinfra/error.h>
 
+/* Fixed window*/
 typedef struct {
-    /* API message ID base */
-    u16 msg_id_base;
 
-    /* on/off switch for the periodic function */
-    u8 periodic_timer_enabled;
-    /* Node index, non-zero if the periodic process has been created */
-    u32 periodic_node_index;
+    u32 flow_id; /* Flow ID*/
 
-    /* convenience */
-    vlib_main_t * vlib_main;
-    vnet_main_t * vnet_main;
-    ethernet_main_t * ethernet_main;
-} srv6-liveb_main_t;
+    u64 delivered; /* 64 bits used as boolean window: 1/0 to store is packet in that position has been delivered */
 
-extern srv6-liveb_main_t srv6-liveb_main;
+    u16 last_delivered; /* Last packet delivered */
 
-extern vlib_node_registration_t srv6-liveb_node;
-extern vlib_node_registration_t srv6-liveb_periodic_node;
+} fixed_window_t;
 
-/* Periodic function events */
-#define SRV6-LIVEB_EVENT1 1
-#define SRV6-LIVEB_EVENT2 2
-#define SRV6-LIVEB_EVENT_PERIODIC_ENABLE_DISABLE 3
+typedef struct
+{
+  /*Pool of packets' sliding window--End.LiveB*/
 
-void srv6-liveb_create_periodic_process (srv6-liveb_main_t *);
+    fixed_window_t *packet_window;
 
-#endif /* __included_srv6-liveb_h__ */
+    /* Hash table mapping Flow window-- End.LiveB*/
+    mhash_t flow_window_hash;
+
+
+
+  u16 msg_id_base;        /**< API message ID base */
+
+  vlib_main_t *vlib_main;     /**< [convenience] vlib main */
+  vnet_main_t *vnet_main;     /**< [convenience] vnet main */
+
+  dpo_type_t srv6_live_b_dpo_type;    /**< DPO type */
+
+  u32 srv6_localsid_behavior_id;  /**< SRv6 LocalSID behavior number */
+} srv6_live_b_main_t;
+
+/*
+ * This is the memory that will be stored per each localsid
+ * the user instantiates
+ */
+typedef struct
+{
+  ip46_address_t nh_addr;       /**< Proxied device address */
+  u32 sw_if_index_out;                      /**< Outgoing iface to proxied device */
+  int live;
+  } srv6_live_b_localsid_t;
+
+extern srv6_live_b_main_t srv6_live_b_main;
+
+format_function_t format_srv6_live_b_localsid;
+unformat_function_t unformat_srv6_live_b_localsid;
+
+void srv6_live_b_dpo_lock (dpo_id_t * dpo);
+void srv6_live_b_dpo_unlock (dpo_id_t * dpo);
+
+extern vlib_node_registration_t srv6_live_b_localsid_node;
+
+#endif /* __included_srv6_liveb_h__ */
 
 /*
  * fd.io coding-style-patch-verification: ON
