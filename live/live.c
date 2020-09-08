@@ -25,6 +25,28 @@
 
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
+
+/* define message structures */
+#define vl_typedefs
+#include <live/live.api.h>
+#undef vl_typedefs
+
+/* define generated endian-swappers */
+#define vl_endianfun
+#include <live/live.api.h>
+#undef vl_endianfun
+
+/* instantiate all the print functions we know about */
+#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
+#define vl_printfun
+#include <live/live.api.h>
+#undef vl_printfun
+
+/* Get the API version number */
+#define vl_api_version(n, v) static u32 api_version = (v);
+#include <live/live.api.h>
+#undef vl_api_version
+
 #include <vpp/app/version.h>
 #include <stdbool.h>
 
@@ -33,6 +55,18 @@
 
 #define REPLY_MSG_ID_BASE sm->msg_id_base
 #include <vlibapi/api_helper_macros.h>
+
+/* List of message types that this plugin understands */
+
+#define foreach_live_plugin_api_msg \
+  _ (LIVE_ENABLE_DISABLE, live_enable_disable)
+
+/* *INDENT-OFF* */
+VLIB_PLUGIN_REGISTER () = {
+    .version = LIVE_PLUGIN_BUILD_VER,
+    .description = "SRv6 Live-Live Policy Plugin",
+};
+/* *INDENT-ON* */
 
 live_main_t live_main;
 
@@ -214,6 +248,35 @@ static void vl_api_live_enable_disable_t_handler
   REPLY_MACRO(VL_API_LIVE_ENABLE_DISABLE_REPLY);
 }
 
+/**
+ * @brief Set up the API message handling tables.
+ */
+static clib_error_t *live_plugin_api_hookup (vlib_main_t *vm)
+{
+  live_main_t *sm = &live_main;
+#define _(N, n)                                                         \
+  vl_msg_api_set_handlers ((VL_API_##N + sm->msg_id_base), #n,          \
+                           vl_api_##n##_t_handler, vl_noop_handler,     \
+                           vl_api_##n##_t_endian, vl_api_##n##_t_print, \
+                           sizeof (vl_api_##n##_t), 1);
+  foreach_live_plugin_api_msg;
+#undef _
+
+  return 0;
+}
+
+#define vl_msg_name_crc_list
+#include <live/live.api.h>
+#undef vl_msg_name_crc_list
+
+static void setup_message_id_table (live_main_t *sm, api_main_t *am)
+{
+#define _(id, n, crc) \
+  vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id + sm->msg_id_base);
+  foreach_vl_msg_name_crc_live;
+#undef _
+}
+
 /* Format for SLs DPO (same as defined in srv6 node) */
 static u8 *
 format_sr_live_segment_list_dpo (u8 * s, va_list * args)
@@ -292,7 +355,8 @@ static clib_error_t * live_init (vlib_main_t * vm)
   error = live_plugin_api_hookup (vm);
 
   /* Add our API messages to the global name_crc hash table */
-  setup_message_id_table (sm, &api_main);
+  api_main_t *api_main = vlibapi_get_main();
+  setup_message_id_table (sm, api_main);
 
   vec_free(name);
 
@@ -310,13 +374,6 @@ VNET_FEATURE_INIT (live, static) =
   .node_name = "live",
   .runs_before =0,
 };
-
-/* *INDENT-OFF* */
-VLIB_PLUGIN_REGISTER () = {
-    .version = LIVE_PLUGIN_BUILD_VER,
-    .description = "SRv6 Live-Live Policy Plugin",
-};
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

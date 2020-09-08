@@ -57,7 +57,7 @@ dpo_type_t live_policy_dpo_type;
 /**
  * The one instance of live_replicate main
  */
-live_main_t live_main; //are we sure that this is the correct type?
+//live_main_t live_main; //are we sure that this is the correct type? (declared in live-h and defined in live.c)
 
 static inline index_t
 live_replicate_get_index (const live_replicate_t *rep)
