@@ -191,16 +191,6 @@ live_main_t * sm = &live_main;
   return 0;
 }
 
-// /* *INDENT-OFF* */
-// VLIB_CLI_COMMAND (live_enable_disable_command, static) =
-// {
-//   .path = "live enable-disable",
-//   .short_help =
-//   "live enable-disable <interface-name> [disable]",
-//   .function = live_enable_disable_command_fn,
-// };
-// /* *INDENT-ON* */
-
 VLIB_CLI_COMMAND (sr_content_command, static) = {
     .path = "live sr policy",
     .short_help = 
