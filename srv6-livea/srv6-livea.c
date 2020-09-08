@@ -28,6 +28,8 @@ unsigned char keyword_str[] = "live.a.dx6";
 unsigned char def_str[] = "Live Live A: Decapsulation and IPv6 Xconnection";
 unsigned char params_str[] = "nh <next-hop> oif <iface-out> ";
 
+srv6_live_a_main_t srv6_live_a_main;
+
 /*****************************************/
 /* SRv6 LocalSID instantiation and removal functions */
 static int
