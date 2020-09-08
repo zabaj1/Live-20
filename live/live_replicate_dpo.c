@@ -60,7 +60,7 @@ dpo_type_t live_policy_dpo_type;
 live_main_t live_main; //are we sure that this is the correct type?
 
 static inline index_t
-live_replicate_get_index (const replicate_t *rep)
+live_replicate_get_index (const live_replicate_t *rep)
 {
     return (rep - live_replicate_pool);
 }
@@ -129,7 +129,7 @@ live_replicate_format (index_t repi,
 
     s = format(s, "%U: ", format_dpo_type, live_policy_dpo_type);
     s = format(s, "[index:%d buckets:%d ", repi, rep->rep_n_buckets);
-    s = format(s, "flags:[%U] ", format_replicate_flags, rep->rep_flags);
+    s = format(s, "flags:[%U] ", live_format_replicate_flags, rep->rep_flags);
     s = format(s, "to:[%Ld:%Ld]]", to.packets, to.bytes);
 
     for (i = 0; i < rep->rep_n_buckets; i++)
@@ -145,7 +145,7 @@ u8*
 format_live_replicate (u8 * s, va_list * args)
 {
     index_t repi = va_arg(*args, index_t);
-    live_replicate_format_flags_t flags = va_arg(*args, replicate_format_flags_t);
+    live_replicate_format_flags_t flags = va_arg(*args, live_replicate_format_flags_t);
 
     return (live_replicate_format(repi, flags, 0, s));
 }
@@ -175,8 +175,6 @@ live_replicate_create_i (u32 num_buckets,
                              rep->rep_n_buckets - 1,
                              CLIB_CACHE_LINE_BYTES);
     }
-
-    REP_DBG(rep, "create");
 
     return (rep);
 }
@@ -279,7 +277,7 @@ live_replicate_multipath_next_hop_fixup (load_balance_path_t *nhs,
  * next hop adjacencies.
  */
 static void
-live_replicate_fill_buckets (replicate_t *rep,
+live_replicate_fill_buckets (live_replicate_t *rep,
                         load_balance_path_t *nhs,
                         dpo_id_t *buckets,
                         u32 n_buckets)
@@ -403,7 +401,7 @@ live_replicate_multipath_update (const dpo_id_t *dpo,
                      * we can write the new on the old..
                      */
                     live_replicate_fill_buckets(rep, nhs,
-                                           replicate_get_buckets(rep),
+                                           live_replicate_get_buckets(rep),
                                            n_buckets);
                     CLIB_MEMORY_BARRIER();
                     live_replicate_set_n_buckets(rep, n_buckets);
@@ -539,10 +537,10 @@ live_replicate_dup (live_replicate_flags_t flags,
              * original has only one bucket that is the local, so create
              * a new one with only the drop
              */
-            copy = replicate_create_i (1, rep->rep_proto);
+            copy = live_replicate_create_i (1, rep->rep_proto);
 
             live_replicate_set_bucket_i(copy, 0,
-                                   replicate_get_buckets(copy),
+                                   live_replicate_get_buckets(copy),
                                    drop_dpo_get(rep->rep_proto));
         }
         else
@@ -869,7 +867,7 @@ VLIB_REGISTER_NODE (ip6_live_replicate_node) = {
   .n_errors = ARRAY_LEN(live_replicate_dpo_error_strings),
   .error_strings = live_replicate_dpo_error_strings,
 
-  .format_trace = format_livve_replicate_trace,
+  .format_trace = format_live_replicate_trace,
   .n_next_nodes = 1,
   .next_nodes = {
       [0] = "ip6-drop",

@@ -120,7 +120,7 @@ extern int live_replicate_is_drop(const dpo_id_t *dpo);
 
 extern u16 live_replicate_n_buckets(index_t repi);
 
-extern index_t live_replicate_dup(replicate_flags_t flags,
+extern index_t live_replicate_dup(live_replicate_flags_t flags,
                              index_t repi); //this is new
 
 /**
