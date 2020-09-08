@@ -38,6 +38,7 @@ static u8 * format_srv6_live_a_localsid_trace (u8 * s, va_list * args)
   return s;
 }
 
+srv6_live_a_main_t srv6_live_a_main;
 vlib_node_registration_t srv6_live_a_localsid_node;
 
 #define foreach_srv6_live_a_localsid_counter \
