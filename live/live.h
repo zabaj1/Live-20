@@ -60,6 +60,8 @@ extern live_main_t live_main;
 
 extern vlib_node_registration_t sr_live_policy_rewrite_encaps_node;
 
+#define LIVE_PLUGIN_BUILD_VER "1.0"
+
 #endif /* __included_live_h__ */
 
 /*

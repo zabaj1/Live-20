@@ -18,8 +18,8 @@ include_directories(${CMAKE_BINARY_DIR})
 
 add_vpp_plugin(live
   SOURCES
-  node.c
   live.c
+  node.c
   live_replicate_dpo.c
 
   API_FILES
@@ -27,4 +27,6 @@ add_vpp_plugin(live
 
   API_TEST_SOURCES
   live_test.c
+
+  COMPONENT vpp-plugin-live
 )
