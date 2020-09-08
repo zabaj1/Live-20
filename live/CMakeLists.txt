@@ -16,9 +16,8 @@ add_vpp_plugin(live
   live.c
   node.c
   live.h
-
-  MULTIARCH_SOURCES
-  node.c
+  live_replicate_dpo.c
+  sr_live_policy_rewrite.c
 
   API_FILES
   live.api
