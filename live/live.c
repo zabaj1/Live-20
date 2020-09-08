@@ -19,7 +19,9 @@
 
 #include <vnet/vnet.h>
 #include <vnet/plugin/plugin.h>
+#include <vnet/fib/ip6_fib.h>
 #include <live/live.h>
+#include <live/live_replicate_dpo.h>
 
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
@@ -216,7 +218,7 @@ static void vl_api_live_enable_disable_t_handler
   live_main_t * sm = &live_main;
   int rv;
 
-  rv = live_enable_disable (sm, (ip6_address_t *) & mp->bsid_addr, 
+  rv = live_enable_disable (sm, (ip6_address_t *) & mp->sw_if_index, 
                                       (int) (mp->enable_disable));
   
   REPLY_MACRO(VL_API_LIVE_ENABLE_DISABLE_REPLY);
