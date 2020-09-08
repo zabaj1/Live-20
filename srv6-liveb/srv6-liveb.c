@@ -28,7 +28,7 @@ unsigned char keyword_str[] = "live.b.dx6";
 unsigned char def_str[] = "Live-Live B [Delivery of late arrivals]: Decapsulation and IPv6 Xconnection";
 unsigned char params_str[] = "nh <next-hop> oif <iface-out> ";
 
-srv6-liveb_main_t srv6-liveb_main;
+srv6_live_b_main_t srv6_live_b_main;
 
 /*****************************************/
 /* SRv6 LocalSID instantiation and removal functions */
@@ -180,16 +180,17 @@ srv6_live_b_init (vlib_main_t * vm)
   sm->srv6_live_b_dpo_type = dpo_register_new_type (&srv6_live_b_vft, srv6_live_b_nodes);
 
   /* Register SRv6 LocalSID */
-  rv = sr_localsid_register_function (vm,
-				      function_name,
-				      keyword_str,
-				      def_str,
-				      params_str,
-				      &sm->srv6_live_b_dpo_type,
-				      format_srv6_live_b_localsid,
-				      unformat_srv6_live_b_localsid,
-				      srv6_live_b_localsid_creation_fn,
-				      srv6_live_b_localsid_removal_fn);
+  rv = sr_localsid_register_function(vm,
+									 function_name,
+									 keyword_str,
+									 def_str,
+									 params_str,
+									 0, //prefix length (requred for SRV6 Mobile)
+									 &sm->srv6_live_b_dpo_type,
+									 format_srv6_live_b_localsid,
+									 unformat_srv6_live_b_localsid,
+									 srv6_live_b_localsid_creation_fn,
+									 srv6_live_b_localsid_removal_fn);
   if (rv < 0)
     clib_error_return (0, "SRv6 LocalSID function could not be registered.");
   else
