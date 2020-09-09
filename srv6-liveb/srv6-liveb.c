@@ -185,7 +185,7 @@ srv6_live_b_init (vlib_main_t * vm)
 									 keyword_str,
 									 def_str,
 									 params_str,
-									 0, //prefix length (requred for SRV6 Mobile)
+									 128, //prefix length (required for SRV6 Mobile)
 									 &sm->srv6_live_b_dpo_type,
 									 format_srv6_live_b_localsid,
 									 unformat_srv6_live_b_localsid,
