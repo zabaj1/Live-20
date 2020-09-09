@@ -27,6 +27,4 @@ add_vpp_plugin(live
 
   API_TEST_SOURCES
   live_test.c
-
-  COMPONENT vpp-plugin-live
 )
