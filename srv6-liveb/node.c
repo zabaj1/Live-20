@@ -34,7 +34,7 @@ static u8 * format_srv6_live_b_localsid_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   srv6_live_b_localsid_trace_t * t = va_arg (*args, srv6_live_b_localsid_trace_t *);
-  s = format (s, "SRv6 Live-Live b localsid: localsid_index %d\n  SRH TLV -> flow: %u, sequence number: %u\n  Live-Live b sliding window -> greatest delivered : %u",
+  s = format (s, "SRv6 Live-Live b localsid: localsid_index %d, SRH TLV -> flow: %u, sequence number: %u\n, Live-Live b sliding window -> greatest delivered: %u",
               t->localsid_index, t->flow_id, t->seq_num, t->last);
   return s;
 }
