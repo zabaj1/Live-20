@@ -114,7 +114,7 @@ end_decaps_srh_processing (vlib_node_runtime_t * node,
         
 
         u32 packet_flow_id;
-        u16 packet_sequence_number;
+        u16 new_sequence_number;
 
         /* Pointer to the last segment in the DA */
         sids = sr0->segments + (sr0->last_entry);
@@ -131,21 +131,24 @@ end_decaps_srh_processing (vlib_node_runtime_t * node,
         /* Pointer to the arrived packet */
         arrived_packet_type = pool_elt_at_index (sm-> pkt_id_end, p[0]);
         /* Pointer to the sequence number */
-        packet_sequence_number = clib_net_to_host_u16(live_tlv->seqnum);
+        new_sequence_number = clib_net_to_host_u16(live_tlv->seqnum);
+        u16 old_sequence_number = arrived_packet_type->sequence_number_end;
+        u16 diff = new_sequence_number - old_sequence_number;
          
         /* If the sequence number (arrived packet) is greater then the sequence number stored in memory */
-        if (packet_sequence_number <= arrived_packet_type->sequence_number_end)
-         {
-              *next0 = SRV6_LIVE_A_LOCALSID_NEXT_ERROR; /* drop packet: A solution */
-              b0->error = node->errors[SRV6_LIVE_A_LOCALSID_COUNTER_DUPLICATE]; /*add error livetpoliveA in control plane*/
-             }
-        else
+        if (diff > 0)
          {
               /* Updating sequence number for the flow */
-              arrived_packet_type->sequence_number_end = packet_sequence_number;
+              arrived_packet_type->sequence_number_end = new_sequence_number;
               vlib_buffer_advance (b0, total_size);
               vnet_buffer (b0)->ip.adj_index[VLIB_TX] = ls0->nh_adj;
          }
+        else
+        
+          {
+              *next0 = SRV6_LIVE_A_LOCALSID_NEXT_ERROR; /* drop packet: A solution */
+              b0->error = node->errors[SRV6_LIVE_A_LOCALSID_COUNTER_DUPLICATE]; /*add error livetpoliveA in control plane*/
+             }
           return;
          }
       else
@@ -153,9 +156,9 @@ end_decaps_srh_processing (vlib_node_runtime_t * node,
         /* Creating new pkt_end structure */
         pool_get (sm->pkt_id_end, arrived_packet_type);
         memset (arrived_packet_type, 0, sizeof(packet_identifier_end_t));
-        packet_sequence_number = clib_net_to_host_u16(live_tlv->seqnum);
+        new_sequence_number = clib_net_to_host_u16(live_tlv->seqnum);
         clib_memcpy(&arrived_packet_type->flow_id_end, &packet_flow_id, sizeof(u32));
-        clib_memcpy(&arrived_packet_type->sequence_number_end, &packet_sequence_number,sizeof(u32));
+        clib_memcpy(&arrived_packet_type->sequence_number_end, &new_sequence_number,sizeof(u32));
         mhash_set (&sm->flow_index_hash_end, &arrived_packet_type->flow_id_end, arrived_packet_type - sm->pkt_id_end, NULL);
 
         vlib_buffer_advance (b0, total_size);   
