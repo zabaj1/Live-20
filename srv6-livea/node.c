@@ -105,58 +105,65 @@ end_decaps_srh_processing (vlib_node_runtime_t * node,
     {
         srv6_live_a_main_t *sm = &srv6_live_a_main;
 
-
         live_tlv_t * live_tlv=0;
         ip6_address_t * sids =0;
         uword *p=0;
-      
         packet_identifier_end_t *arrived_packet_type =0;
         
-
         /* Pointer to the last segment in the DA */
         sids = sr0->segments + (sr0->last_entry);
         live_tlv = (live_tlv_t *) (sids + 1);
+        u16 new_sequence_number = clib_net_to_host_u16(live_tlv->seqnum);
+
         /* Pointer to the flowID in the SID of arrived packet */
-        
         u32 packet_flow_id = clib_net_to_host_u32(live_tlv->flow);
 
         /* Checking wheter the flowID already axists in memory */
         p = mhash_get (&sm->flow_index_hash_end, &packet_flow_id);
 
-        u16 new_sequence_number = clib_net_to_host_u16(live_tlv->seqnum);
-
         if (p) /* Already managing the flow */
         { 
         /* Pointer to the arrived packet */
         arrived_packet_type = pool_elt_at_index (sm-> pkt_id_end, p[0]);
-        /* Pointer to the sequence number */
-        u16 old_sequence_number = arrived_packet_type->sequence_number_end;
-        u16 diff = new_sequence_number - old_sequence_number;
-         
-        /* If the sequence number (arrived packet) is greater then the sequence number stored in memory */
-        if (diff > 0)
-         {
-              /* Updating sequence number for the flow */
-              arrived_packet_type->sequence_number_end = new_sequence_number;
-              vlib_buffer_advance (b0, total_size);
-              vnet_buffer (b0)->ip.adj_index[VLIB_TX] = ls0->nh_adj;
-         }
-        else
-        
+
+        if(!CLIB_SPINLOCK_IS_LOCKED(&sm->flow_lock)) //if flow is not already locked...
+        {
+          clib_spinlock_lock(&arrived_packet_type->lock);
+
+          /* Pointer to the sequence number */
+          u16 old_sequence_number = arrived_packet_type->sequence_number_end;
+          u16 diff = new_sequence_number - old_sequence_number;
+          
+          /* If the sequence number (arrived packet) is greater then the sequence number stored in memory */
+          if (diff > 0)
           {
-              *next0 = SRV6_LIVE_A_LOCALSID_NEXT_ERROR; /* drop packet: A solution */
-              b0->error = node->errors[SRV6_LIVE_A_LOCALSID_COUNTER_DUPLICATE]; /*add error livetpoliveA in control plane*/
-             }
+            clib_warning("[%u], new SN: %u, old SN:%u\n",packet_flow_id, new_sequence_number, old_sequence_number);      
+            /* Updating sequence number for the flow */
+            arrived_packet_type->sequence_number_end = new_sequence_number;
+            vlib_buffer_advance (b0, total_size);
+            vnet_buffer (b0)->ip.adj_index[VLIB_TX] = ls0->nh_adj;
+          }
+          else        
+          {
+            clib_warning("[%u], new SN: %u, old SN:%u --> DROP\n",packet_flow_id, new_sequence_number, old_sequence_number);
+            *next0 = SRV6_LIVE_A_LOCALSID_NEXT_ERROR; /* drop packet: A solution */
+            b0->error = node->errors[SRV6_LIVE_A_LOCALSID_COUNTER_DUPLICATE]; /*add error livetpoliveA in control plane*/
+          }
+          clib_spinlock_unlock(&arrived_packet_type->lock);
           return;
+        }
+
          }
       else
          {
           if(!CLIB_SPINLOCK_IS_LOCKED(&sm->flow_lock)) //if flow is not already locked...
           {
             clib_spinlock_lock(&sm->flow_lock); //acquire lock: critical section start
+            clib_warning("New flow: [%u], new SN: %u\n",packet_flow_id, new_sequence_number);
             /* Creating new pkt_end structure */
             pool_get (sm->pkt_id_end, arrived_packet_type);
             memset (arrived_packet_type, 0, sizeof(packet_identifier_end_t));
+            clib_spinlock_init(&arrived_packet_type->lock);
             clib_memcpy(&arrived_packet_type->flow_id_end, &packet_flow_id, sizeof(u32));
             clib_memcpy(&arrived_packet_type->sequence_number_end, &new_sequence_number,sizeof(u32));
             mhash_set (&sm->flow_index_hash_end, &arrived_packet_type->flow_id_end, arrived_packet_type - sm->pkt_id_end, NULL);

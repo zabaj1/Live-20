@@ -28,6 +28,8 @@ typedef struct
 
    u16 sequence_number_end;         /* number of packets */
 
+   clib_spinlock_t lock;
+
 }  packet_identifier_end_t;
 
 typedef struct
