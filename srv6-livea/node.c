@@ -114,7 +114,6 @@ end_decaps_srh_processing (vlib_node_runtime_t * node,
         
 
         u32 packet_flow_id;
-        u16 new_sequence_number;
 
         /* Pointer to the last segment in the DA */
         sids = sr0->segments + (sr0->last_entry);
@@ -125,6 +124,8 @@ end_decaps_srh_processing (vlib_node_runtime_t * node,
 
         /* Checking wheter the flowID already axists in memory */
         p = mhash_get (&sm->flow_index_hash_end, &packet_flow_id);
+
+        u16 new_sequence_number = clib_net_to_host_u16(live_tlv->seqnum);
 
         if (p) /* Already managing the flow */
         { 
@@ -156,7 +157,6 @@ end_decaps_srh_processing (vlib_node_runtime_t * node,
         /* Creating new pkt_end structure */
         pool_get (sm->pkt_id_end, arrived_packet_type);
         memset (arrived_packet_type, 0, sizeof(packet_identifier_end_t));
-        new_sequence_number = clib_net_to_host_u16(live_tlv->seqnum);
         clib_memcpy(&arrived_packet_type->flow_id_end, &packet_flow_id, sizeof(u32));
         clib_memcpy(&arrived_packet_type->sequence_number_end, &new_sequence_number,sizeof(u32));
         mhash_set (&sm->flow_index_hash_end, &arrived_packet_type->flow_id_end, arrived_packet_type - sm->pkt_id_end, NULL);
