@@ -173,6 +173,7 @@ srv6_live_a_init (vlib_main_t * vm)
   
   sm->vlib_main = vm;
   sm->vnet_main = vnet_get_main ();
+  clib_spinlock_init(&sm->flow_lock); //lock used to prevent multiple allocations for a single incoming flow
 
   /* Create DPO */
   sm->srv6_live_a_dpo_type = dpo_register_new_type (&srv6_live_a_vft, srv6_live_a_nodes);
