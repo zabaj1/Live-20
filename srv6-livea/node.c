@@ -137,7 +137,6 @@ end_decaps_srh_processing (vlib_node_runtime_t * node,
           /* If the sequence number (arrived packet) is greater then the sequence number stored in memory */
           if (diff > 0)
           {
-            clib_warning("[%u], new SN: %u, old SN:%u\n",packet_flow_id, new_sequence_number, old_sequence_number);      
             /* Updating sequence number for the flow */
             arrived_packet_type->sequence_number_end = new_sequence_number;
             vlib_buffer_advance (b0, total_size);
@@ -145,7 +144,6 @@ end_decaps_srh_processing (vlib_node_runtime_t * node,
           }
           else        
           {
-            clib_warning("[%u], new SN: %u, old SN:%u --> DROP\n",packet_flow_id, new_sequence_number, old_sequence_number);
             *next0 = SRV6_LIVE_A_LOCALSID_NEXT_ERROR; /* drop packet: A solution */
             b0->error = node->errors[SRV6_LIVE_A_LOCALSID_COUNTER_DUPLICATE]; /*add error livetpoliveA in control plane*/
           }
@@ -159,7 +157,6 @@ end_decaps_srh_processing (vlib_node_runtime_t * node,
           if(!CLIB_SPINLOCK_IS_LOCKED(&sm->flow_lock)) //if flow is not already locked...
           {
             clib_spinlock_lock(&sm->flow_lock); //acquire lock: critical section start
-            clib_warning("New flow: [%u], new SN: %u\n",packet_flow_id, new_sequence_number);
             /* Creating new pkt_end structure */
             pool_get (sm->pkt_id_end, arrived_packet_type);
             memset (arrived_packet_type, 0, sizeof(packet_identifier_end_t));
