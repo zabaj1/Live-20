@@ -113,14 +113,12 @@ end_decaps_srh_processing (vlib_node_runtime_t * node,
         packet_identifier_end_t *arrived_packet_type =0;
         
 
-        u32 packet_flow_id;
-
         /* Pointer to the last segment in the DA */
         sids = sr0->segments + (sr0->last_entry);
         live_tlv = (live_tlv_t *) (sids + 1);
         /* Pointer to the flowID in the SID of arrived packet */
         
-        packet_flow_id = clib_net_to_host_u32(live_tlv->flow);
+        u32 packet_flow_id = clib_net_to_host_u32(live_tlv->flow);
 
         /* Checking wheter the flowID already axists in memory */
         p = mhash_get (&sm->flow_index_hash_end, &packet_flow_id);
@@ -132,7 +130,6 @@ end_decaps_srh_processing (vlib_node_runtime_t * node,
         /* Pointer to the arrived packet */
         arrived_packet_type = pool_elt_at_index (sm-> pkt_id_end, p[0]);
         /* Pointer to the sequence number */
-        new_sequence_number = clib_net_to_host_u16(live_tlv->seqnum);
         u16 old_sequence_number = arrived_packet_type->sequence_number_end;
         u16 diff = new_sequence_number - old_sequence_number;
          
