@@ -44,9 +44,12 @@ typedef struct
   vlib_main_t *vlib_main;     /**< [convenience] vlib main */
   vnet_main_t *vnet_main;     /**< [convenience] vnet main */
 
+  clib_spinlock_t flow_lock; /*Lock used to prevent double operation for a new incoming flow*/
+
   dpo_type_t srv6_live_a_dpo_type;    /**< DPO type */
 
   u32 srv6_localsid_behavior_id;  /**< SRv6 LocalSID behavior number */
+
 } srv6_live_a_main_t;
 
 /*

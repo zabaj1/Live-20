@@ -151,18 +151,22 @@ end_decaps_srh_processing (vlib_node_runtime_t * node,
          }
       else
          {
-        /* Creating new pkt_end structure */
-        pool_get (sm->pkt_id_end, arrived_packet_type);
-        memset (arrived_packet_type, 0, sizeof(packet_identifier_end_t));
-        clib_memcpy(&arrived_packet_type->flow_id_end, &packet_flow_id, sizeof(u32));
-        clib_memcpy(&arrived_packet_type->sequence_number_end, &new_sequence_number,sizeof(u32));
-        mhash_set (&sm->flow_index_hash_end, &arrived_packet_type->flow_id_end, arrived_packet_type - sm->pkt_id_end, NULL);
+          if(!CLIB_SPINLOCK_IS_LOCKED(&sm->flow_lock)) //if flow is not already locked...
+          {
+            clib_spinlock_lock(&sm->flow_lock); //acquire lock: critical section start
+            /* Creating new pkt_end structure */
+            pool_get (sm->pkt_id_end, arrived_packet_type);
+            memset (arrived_packet_type, 0, sizeof(packet_identifier_end_t));
+            clib_memcpy(&arrived_packet_type->flow_id_end, &packet_flow_id, sizeof(u32));
+            clib_memcpy(&arrived_packet_type->sequence_number_end, &new_sequence_number,sizeof(u32));
+            mhash_set (&sm->flow_index_hash_end, &arrived_packet_type->flow_id_end, arrived_packet_type - sm->pkt_id_end, NULL);
 
-        vlib_buffer_advance (b0, total_size);   
-        vnet_buffer (b0)->ip.adj_index[VLIB_TX] = ls0->nh_adj;
-
-
-          return;
+            vlib_buffer_advance (b0, total_size);   
+            vnet_buffer (b0)->ip.adj_index[VLIB_TX] = ls0->nh_adj;
+            clib_spinlock_unlock(&sm->flow_lock); //release lock
+            return;
+          }
+        
        }
   }
     
