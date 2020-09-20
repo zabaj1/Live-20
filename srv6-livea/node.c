@@ -126,7 +126,7 @@ end_decaps_srh_processing (vlib_node_runtime_t * node,
         /* Pointer to the arrived packet */
         arrived_packet_type = pool_elt_at_index (sm-> pkt_id_end, p[0]);
 
-        if(!CLIB_SPINLOCK_IS_LOCKED(&sm->flow_lock)) //if flow is not already locked...
+        if(!CLIB_SPINLOCK_IS_LOCKED(&arrived_packet_type->lock)) //if flow is not already locked...
         {
           clib_spinlock_lock(&arrived_packet_type->lock);
 
