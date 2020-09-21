@@ -149,7 +149,6 @@ end_decaps_srh_processing (vlib_main_t *vm, vlib_node_runtime_t * node,
 
         if (sn_difference_from_first > window_length) //RIGHT
         {
-          clib_warning("RIGHT[%u], new SN: %u, first SN in window: %u, difference: %u\n", *packet_flow_id, new_sequence_number, first_sn_in_window, sn_difference_from_first);
           /* The packet sequence number is greater than the last delivered */
           /* Move the sliding window to the left: the last bit must be the last arrived packet */
 
@@ -164,7 +163,6 @@ end_decaps_srh_processing (vlib_main_t *vm, vlib_node_runtime_t * node,
         }
         else if (sn_difference_from_first <= window_length) //IN
         {
-          clib_warning("IN   [%u], new SN: %u, first SN in window: %u, difference: %u\n", *packet_flow_id, new_sequence_number, first_sn_in_window, sn_difference_from_first);
           /* bitmask used to check the value of bits */
           u64 flow_mask = 0;
           flow_mask = 0x00;
@@ -191,7 +189,6 @@ end_decaps_srh_processing (vlib_main_t *vm, vlib_node_runtime_t * node,
         }
         else //LEFT
         {
-          clib_warning("LEFT [%u], new SN: %u, first SN in window: %u, difference: %u\n", *packet_flow_id, new_sequence_number, first_sn_in_window, sn_difference_from_first);
           /* Drop packet because it has arrived too late respect the time window*/
           *next0 = SRV6_LIVE_B_LOCALSID_NEXT_ERROR; /* drop packet: B solution */
           b0->error = node->errors[SRV6_LIVE_B_LOCALSID_COUNTER_OUT_LEFT]; /*add error livetpoliveB in control plane*/
@@ -208,7 +205,6 @@ end_decaps_srh_processing (vlib_main_t *vm, vlib_node_runtime_t * node,
       if(!CLIB_SPINLOCK_IS_LOCKED(&sm->flow_lock)) //if flow is not already locked...
       {
         clib_spinlock_lock(&sm->flow_lock); //acquire lock: critical section start
-        clib_warning("NEW[%u], new SN: %u\n", *packet_flow_id);
         /* Creating new window structure */
         pool_get (sm->packet_window, flow_window);
         memset (flow_window, 0, sizeof(fixed_window_t));
@@ -230,7 +226,6 @@ end_decaps_srh_processing (vlib_main_t *vm, vlib_node_runtime_t * node,
         clib_spinlock_unlock(&sm->flow_lock); //release lock
         return;
       }
-      else {clib_warning("LOCKED[%u]\n", *packet_flow_id);}
     }
   }
     
