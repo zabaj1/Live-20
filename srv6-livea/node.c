@@ -132,10 +132,10 @@ end_decaps_srh_processing (vlib_node_runtime_t * node,
 
           /* Pointer to the sequence number */
           u16 old_sequence_number = arrived_packet_type->sequence_number_end;
-          u16 diff = new_sequence_number - old_sequence_number;
+          u16 sn_difference = new_sequence_number - old_sequence_number;
           
           /* If the sequence number (arrived packet) is greater then the sequence number stored in memory */
-          if (diff > 0)
+          if (sn_difference > 0)
           {
             /* Updating sequence number for the flow */
             arrived_packet_type->sequence_number_end = new_sequence_number;
