@@ -85,7 +85,7 @@ end_decaps_srh_processing (vlib_main_t *vm, vlib_node_runtime_t * node,
   /* Compute the size of the IPv6 header with all Ext. headers */
   u8 next_proto;
   ip6_ext_header_t *next_ext_header;
-  u16 total_size = 0;
+  i16 total_size = 0;
 
   next_proto = ip0->protocol;
   next_ext_header = (void *) (ip0 + 1);
