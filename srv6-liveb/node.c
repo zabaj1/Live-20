@@ -91,135 +91,147 @@ end_decaps_srh_processing (vlib_main_t *vm, vlib_node_runtime_t * node,
   next_ext_header = (void *) (ip0 + 1);
   total_size = sizeof (ip6_header_t);
   while (ip6_ext_hdr (next_proto))
-    {
-      total_size += ip6_ext_header_len (next_ext_header);
-      next_proto = next_ext_header->next_hdr;
-      next_ext_header = ip6_ext_next_header (next_ext_header);
-    }
+  {
+    total_size += ip6_ext_header_len (next_ext_header);
+    next_proto = next_ext_header->next_hdr;
+    next_ext_header = ip6_ext_next_header (next_ext_header);
+  }
 
   /* Ensure this is the last segment. Otherwise drop. */
   if (sr0 && sr0->segments_left != 0)
-    {
-      *next0 = SRV6_LIVE_B_LOCALSID_NEXT_ERROR;
-      b0->error = node->errors[SRV6_LIVE_B_LOCALSID_COUNTER_NO_LS];
-      return;
-    }
+  {
+    *next0 = SRV6_LIVE_B_LOCALSID_NEXT_ERROR;
+    b0->error = node->errors[SRV6_LIVE_B_LOCALSID_COUNTER_NO_LS];
+    return;
+  }
 
   if (next_proto == IP_PROTOCOL_IPV6)
+  {
+    
+    srv6_live_b_main_t *sm = &srv6_live_b_main;
+
+    live_tlv_t * live_tlv=0;
+    ip6_address_t * sids =0;
+    uword *p=0;
+    /* Live-Live B window */
+    fixed_window_t *flow_window =0;
+    
+    /* Live-Live B variables*/
+    u16 window_length = 64;
+
+    /* Pointer to the TLV */
+    sids = sr0->segments + (sr0->last_entry);
+    live_tlv = (live_tlv_t *) (sids + 1);
+    
+    /* Pointer to the sequence number */
+    u16 new_sequence_number = clib_net_to_host_u16(live_tlv->seqnum); //REMEMBER TO UPDATE *packet_sequence_number!
+    //*packet_sequence_number = clib_net_to_host_u16(live_tlv->seqnum);
+
+    /* Pointer to the flowID in the SID of arrived packet */      
+    *packet_flow_id = clib_net_to_host_u32(live_tlv->flow);
+    
+    /* Checking wheter the Window flowID already exists in memory */
+    p = mhash_get (&sm->flow_window_hash, packet_flow_id);
+
+    if (p) /* Already managing the flow */
     {
-      
-      srv6_live_b_main_t *sm = &srv6_live_b_main;
+      /* Pointer to the flow window */
+      flow_window = pool_elt_at_index (sm-> packet_window, p[0]);
 
-      live_tlv_t * live_tlv=0;
-      ip6_address_t * sids =0;
-      uword *p=0;
-      /* Live-Live B window */
-      fixed_window_t *flow_window =0;
-      
-      /* Live-Live B variables*/
-      int difference ;
-      u64 variable_to_check=0;
-      u16 window_length = 64;
-
-      /* Pointer to the TLV */
-      sids = sr0->segments + (sr0->last_entry);
-      live_tlv = (live_tlv_t *) (sids + 1);
-      /* Pointer to the flowID in the SID of arrived packet */      
-      *packet_flow_id = clib_net_to_host_u32(live_tlv->flow);
-      
-      /* Checking wheter the Window flowID already exists in memory */
-      p = mhash_get (&sm->flow_window_hash, packet_flow_id);
-
-      if (p) /* Already managing the flow */
+      if(!CLIB_SPINLOCK_IS_LOCKED(&flow_window->lock)) //if flow is not already locked...
       {
-        /* Pointer to the flow window */
-        flow_window = pool_elt_at_index (sm-> packet_window, p[0]);
-        /* Pointer to the sequence number */
-        *packet_sequence_number = clib_net_to_host_u16(live_tlv->seqnum);
-        /* If the sequence number (arrived packet) is smaller than the first sequence 
-           number stored in the window */
-        if (*packet_sequence_number < (flow_window->last_delivered - window_length))
-          {
-              /* Drop packet because it has arrived too late respect the time window*/
-              *next0 = SRV6_LIVE_B_LOCALSID_NEXT_ERROR; /* drop packet: B solution */
-              b0->error = node->errors[SRV6_LIVE_B_LOCALSID_COUNTER_OUT_LEFT]; /*add error livetpoliveB in control plane*/
-              *last = flow_window->last_delivered;
-	  }
-        /* If the sequence number (arrived packet) is smaller than the last delivered -- the packet is inside the window */
-        else if (*packet_sequence_number <= flow_window->last_delivered)
-        {
+        clib_spinlock_lock(&flow_window->lock);
 
-            /* variable used to check the value of bits */
-              variable_to_check = 0x00;
-              /* Distance between the packet sequence number and the last delivered */
-              difference = flow_window->last_delivered - *packet_sequence_number;
-              /* Set the last bit of the variable to 1 */
-              variable_to_check = variable_to_check | 0x01;
-              /* Move to the left the last bit up to the relative position inside the window */
-              variable_to_check = variable_to_check << difference;
-              /* AND between the window and the variable: the variable is made of all 0s except 
-                 the relative bit inside the window that represents the packet */     
-              if (flow_window->delivered & variable_to_check)
-              {
-                /* Already delivered the packet of that sequence number: this is the replica */
-                *next0 = SRV6_LIVE_B_LOCALSID_NEXT_ERROR; /* drop packet: B solution */
-                  b0->error = node->errors[SRV6_LIVE_B_LOCALSID_COUNTER_DUPLICATE]; /*add error livetpoliveA in control plane*/
-                }
-            else
-            {
-              /* Haven't delivered the packet yet */
-              /* OR between the window and the variable: it changes only the bit in the relative position
-                 inside the window */
-              flow_window->delivered = flow_window->delivered | variable_to_check;
-              vlib_buffer_advance (b0, total_size);
-              vnet_buffer (b0)->ip.adj_index[VLIB_TX] = ls0->nh_adj;
-            }
-            *last = flow_window->last_delivered;
-	}
-        else 
+        u16 first_sn_in_window = flow_window->last_delivered - (window_length-1); //this is the SN of the leftmost packet in the flow window
+        u16 last_sn_in_window = flow_window->last_delivered; //this is the SN of the rightmost packet in the flow window
+        u16 sn_difference_from_first = new_sequence_number - first_sn_in_window;
+        u16 sn_difference = new_sequence_number - last_sn_in_window; //distance between the packet sequence number and the last delivered
+
+        if (sn_difference_from_first > window_length) //RIGHT
         {
+          clib_warning("RIGHT[%u], new SN: %u, first SN in window: %u, difference: %u\n", *packet_flow_id, new_sequence_number, first_sn_in_window, sn_difference_from_first);
           /* The packet sequence number is greater than the last delivered */
-          /* Distance between the packet sequence number and the last delivered */
-          difference = *packet_sequence_number - flow_window->last_delivered;
           /* Move the sliding window to the left: the last bit must be the last arrived packet */
 
-          flow_window-> delivered = flow_window->delivered << difference;
+          flow_window-> delivered = flow_window->delivered << sn_difference;
           /* Fix the last bit to 1 because is the packet being processed */
           flow_window-> delivered = (flow_window->delivered) | 0x01;
           /* Update the last delivered */
-          flow_window-> last_delivered = *packet_sequence_number;
-          *last = *packet_sequence_number;
+          flow_window-> last_delivered = new_sequence_number;
+          *last = new_sequence_number;
           vlib_buffer_advance (b0, total_size);
           vnet_buffer (b0)->ip.adj_index[VLIB_TX] = ls0->nh_adj;
         }
+        else if (sn_difference_from_first <= window_length) //IN
+        {
+          clib_warning("IN   [%u], new SN: %u, first SN in window: %u, difference: %u\n", *packet_flow_id, new_sequence_number, first_sn_in_window, sn_difference_from_first);
+          /* bitmask used to check the value of bits */
+          u64 flow_mask = 0;
+          flow_mask = 0x00;
+          /* Set the last bit of the variable to 1 */
+          flow_mask = flow_mask | 0x01;
+          /* Move to the left the last bit up to the relative position inside the window */
+          flow_mask = flow_mask << sn_difference;
+          /* AND between the window and the variable: the variable is made of all 0s except the relative bit inside the window that represents the packet */     
+          if (flow_window->delivered & flow_mask)
+          {
+            /* Already delivered the packet of that sequence number: this is the replica */
+            *next0 = SRV6_LIVE_B_LOCALSID_NEXT_ERROR; /* drop packet: B solution */
+            b0->error = node->errors[SRV6_LIVE_B_LOCALSID_COUNTER_DUPLICATE]; /*add error livetpoliveA in control plane*/
+          }
+          else
+          {
+            /* Haven't delivered the packet yet */
+            /* OR between the window and the variable: it changes only the bit in the relative position inside the window */
+            flow_window->delivered = flow_window->delivered | flow_mask;
+            vlib_buffer_advance (b0, total_size);
+            vnet_buffer (b0)->ip.adj_index[VLIB_TX] = ls0->nh_adj;
+          }
+          *last = flow_window->last_delivered;
+        }
+        else //LEFT
+        {
+          clib_warning("LEFT [%u], new SN: %u, first SN in window: %u, difference: %u\n", *packet_flow_id, new_sequence_number, first_sn_in_window, sn_difference_from_first);
+          /* Drop packet because it has arrived too late respect the time window*/
+          *next0 = SRV6_LIVE_B_LOCALSID_NEXT_ERROR; /* drop packet: B solution */
+          b0->error = node->errors[SRV6_LIVE_B_LOCALSID_COUNTER_OUT_LEFT]; /*add error livetpoliveB in control plane*/
+          *last = flow_window->last_delivered;
+        }
     
-
-      return;
-
+        *packet_sequence_number = new_sequence_number;
+        clib_spinlock_unlock(&flow_window->lock);
+        return;
       }
-      else
+    }
+    else
+    {
+      if(!CLIB_SPINLOCK_IS_LOCKED(&sm->flow_lock)) //if flow is not already locked...
       {
+        clib_spinlock_lock(&sm->flow_lock); //acquire lock: critical section start
+        clib_warning("NEW[%u], new SN: %u\n", *packet_flow_id);
         /* Creating new window structure */
         pool_get (sm->packet_window, flow_window);
         memset (flow_window, 0, sizeof(fixed_window_t));
+        clib_spinlock_init(&flow_window->lock);
         clib_memcpy(&flow_window->flow_id, packet_flow_id, sizeof(u32));
-
-        *packet_sequence_number = clib_net_to_host_u16(live_tlv->seqnum);
+        u16 new_sequence_number = clib_net_to_host_u16(live_tlv->seqnum);
         /* New time window */
         flow_window->delivered = 0x01;
         /* First and last packet delivered */
-        flow_window->last_delivered=*packet_sequence_number;
-	      *last = *packet_sequence_number; 
-	      /* Set the hash */
-        mhash_set (&sm->flow_window_hash, &flow_window->flow_id,
-          flow_window - sm->packet_window, NULL);
+        flow_window->last_delivered = new_sequence_number;
+        *last = new_sequence_number; 
+        /* Set the hash */
+        mhash_set (&sm->flow_window_hash, &flow_window->flow_id, flow_window - sm->packet_window, NULL);
 
         vlib_buffer_advance (b0, total_size);
         vnet_buffer (b0)->ip.adj_index[VLIB_TX] = ls0->nh_adj;
 
-
-          return;
-       }
+        *packet_sequence_number = new_sequence_number;
+        clib_spinlock_unlock(&sm->flow_lock); //release lock
+        return;
+      }
+      else {clib_warning("LOCKED[%u]\n", *packet_flow_id);}
+    }
   }
     
   *next0 = SRV6_LIVE_B_LOCALSID_NEXT_ERROR;

@@ -31,6 +31,8 @@ typedef struct {
 
     u16 last_delivered; /* Last packet delivered */
 
+    clib_spinlock_t lock;
+
 } fixed_window_t;
 
 typedef struct
@@ -50,6 +52,8 @@ typedef struct
   vnet_main_t *vnet_main;     /**< [convenience] vnet main */
 
   dpo_type_t srv6_live_b_dpo_type;    /**< DPO type */
+
+  clib_spinlock_t flow_lock; /*Lock used to prevent double operation for a new incoming flow*/
 
   u32 srv6_localsid_behavior_id;  /**< SRv6 LocalSID behavior number */
 } srv6_live_b_main_t;
