@@ -149,6 +149,7 @@ end_decaps_srh_processing (vlib_main_t *vm, vlib_node_runtime_t * node,
 
         if (sn_difference_from_first > window_length) //RIGHT
         {
+          clib_warning("RIGHT[%u], new SN: %u, first SN in window: %u, difference: %u\n", *packet_flow_id, new_sequence_number, first_sn_in_window, sn_difference_from_first);
           /* The packet sequence number is greater than the last delivered */
           /* Move the sliding window to the left: the last bit must be the last arrived packet */
 
@@ -163,6 +164,7 @@ end_decaps_srh_processing (vlib_main_t *vm, vlib_node_runtime_t * node,
         }
         else if (sn_difference_from_first <= window_length) //IN
         {
+          clib_warning("IN   [%u], new SN: %u, first SN in window: %u, difference: %u\n", *packet_flow_id, new_sequence_number, first_sn_in_window, sn_difference_from_first);
           /* bitmask used to check the value of bits */
           u64 flow_mask = 0;
           flow_mask = 0x00;
@@ -174,6 +176,7 @@ end_decaps_srh_processing (vlib_main_t *vm, vlib_node_runtime_t * node,
           if (flow_window->delivered & flow_mask)
           {
             /* Already delivered the packet of that sequence number: this is the replica */
+            clib_warning("--> DUPLICATE DROP\n");
             *next0 = SRV6_LIVE_B_LOCALSID_NEXT_ERROR; /* drop packet: B solution */
             b0->error = node->errors[SRV6_LIVE_B_LOCALSID_COUNTER_DUPLICATE]; /*add error livetpoliveA in control plane*/
           }
@@ -181,6 +184,7 @@ end_decaps_srh_processing (vlib_main_t *vm, vlib_node_runtime_t * node,
           {
             /* Haven't delivered the packet yet */
             /* OR between the window and the variable: it changes only the bit in the relative position inside the window */
+            clib_warning("--> FORWARD\n");
             flow_window->delivered = flow_window->delivered | flow_mask;
             vlib_buffer_advance (b0, total_size);
             vnet_buffer (b0)->ip.adj_index[VLIB_TX] = ls0->nh_adj;
@@ -189,6 +193,7 @@ end_decaps_srh_processing (vlib_main_t *vm, vlib_node_runtime_t * node,
         }
         else //LEFT
         {
+          clib_warning("LEFT [%u], new SN: %u, first SN in window: %u, difference: %u\n", *packet_flow_id, new_sequence_number, first_sn_in_window, sn_difference_from_first);
           /* Drop packet because it has arrived too late respect the time window*/
           *next0 = SRV6_LIVE_B_LOCALSID_NEXT_ERROR; /* drop packet: B solution */
           b0->error = node->errors[SRV6_LIVE_B_LOCALSID_COUNTER_OUT_LEFT]; /*add error livetpoliveB in control plane*/
@@ -226,6 +231,11 @@ end_decaps_srh_processing (vlib_main_t *vm, vlib_node_runtime_t * node,
         clib_spinlock_unlock(&sm->flow_lock); //release lock
         return;
       }
+      else
+      {
+        clib_warning("FLOWD[%u], Flow already locked\n", *packet_flow_id);
+      }
+      
     }
   }
     
