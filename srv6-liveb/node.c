@@ -147,7 +147,7 @@ end_decaps_srh_processing (vlib_main_t *vm, vlib_node_runtime_t * node,
         u16 sn_difference_from_first = new_sequence_number - first_sn_in_window;
         u16 sn_difference = new_sequence_number - last_sn_in_window; //distance between the packet sequence number and the last delivered
 
-        if (sn_difference_from_first > window_length) //RIGHT
+        if (sn_difference_from_first >= window_length) //RIGHT
         {
           clib_warning("RIGHT[%u], new SN: %u, first SN in window: %u, difference: %u\n", *packet_flow_id, new_sequence_number, first_sn_in_window, sn_difference_from_first);
           /* The packet sequence number is greater than the last delivered */
@@ -162,7 +162,7 @@ end_decaps_srh_processing (vlib_main_t *vm, vlib_node_runtime_t * node,
           vlib_buffer_advance (b0, total_size);
           vnet_buffer (b0)->ip.adj_index[VLIB_TX] = ls0->nh_adj;
         }
-        else if (sn_difference_from_first <= window_length) //IN
+        else if (sn_difference_from_first < window_length) //IN
         {
           clib_warning("IN   [%u], new SN: %u, first SN in window: %u, difference: %u\n", *packet_flow_id, new_sequence_number, first_sn_in_window, sn_difference_from_first);
           /* bitmask used to check the value of bits */
