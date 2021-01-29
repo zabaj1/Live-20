@@ -140,7 +140,8 @@ end_decaps_srh_processing (vlib_main_t *vm, vlib_node_runtime_t * node,
            number stored in the window */
         if (*packet_sequence_number < (flow_window->last_delivered - window_length))
           {
-              /* Drop packet because it has arrived too late respect the time window*/
+			  clib_warning("OUT;%u", *packet_sequence_number - flow_window->last_delivered);
+			  /* Drop packet because it has arrived too late respect the time window*/
               *next0 = SRV6_LIVE_B_LOCALSID_NEXT_ERROR; /* drop packet: B solution */
               b0->error = node->errors[SRV6_LIVE_B_LOCALSID_COUNTER_OUT_LEFT]; /*add error livetpoliveB in control plane*/
               *last = flow_window->last_delivered;
@@ -148,8 +149,8 @@ end_decaps_srh_processing (vlib_main_t *vm, vlib_node_runtime_t * node,
         /* If the sequence number (arrived packet) is smaller than the last delivered -- the packet is inside the window */
         else if (*packet_sequence_number <= flow_window->last_delivered)
         {
-
-            /* variable used to check the value of bits */
+			clib_warning("IN;%u", *packet_sequence_number - flow_window->last_delivered));
+			/* variable used to check the value of bits */
               variable_to_check = 0x00;
               /* Distance between the packet sequence number and the last delivered */
               difference = flow_window->last_delivered - *packet_sequence_number;
@@ -178,7 +179,8 @@ end_decaps_srh_processing (vlib_main_t *vm, vlib_node_runtime_t * node,
 	}
         else 
         {
-          /* The packet sequence number is greater than the last delivered */
+			clib_warning("NEW;%u", *packet_sequence_number - flow_window->last_delivered));
+		  /* The packet sequence number is greater than the last delivered */
           /* Distance between the packet sequence number and the last delivered */
           difference = *packet_sequence_number - flow_window->last_delivered;
           /* Move the sliding window to the left: the last bit must be the last arrived packet */
@@ -191,7 +193,7 @@ end_decaps_srh_processing (vlib_main_t *vm, vlib_node_runtime_t * node,
           *last = *packet_sequence_number;
           vlib_buffer_advance (b0, total_size);
           vnet_buffer (b0)->ip.adj_index[VLIB_TX] = ls0->nh_adj;
-        }
+		}
     
 
       return;
