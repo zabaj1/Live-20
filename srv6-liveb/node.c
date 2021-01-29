@@ -294,9 +294,12 @@ srv6_live_b_localsid_fn (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_fram
         srv6_live_b_localsid_trace_t *tr = vlib_add_trace (vm, node, b0, sizeof (*tr));
         tr->localsid_index = ls0 - sm->localsids;
         tr->flow_id = packet_flow_id ;
-        tr->seq_num = packet_sequence_number;
+		#pragma GCC diagnostic push
+		#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+		tr->seq_num = packet_sequence_number;
         tr->last = last;
-      }
+		#pragma GCC diagnostic pop
+	  }
 
       /* This increments the SRv6 per LocalSID counters.*/
       vlib_increment_combined_counter
