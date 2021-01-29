@@ -149,7 +149,7 @@ end_decaps_srh_processing (vlib_main_t *vm, vlib_node_runtime_t * node,
         /* If the sequence number (arrived packet) is smaller than the last delivered -- the packet is inside the window */
         else if (*packet_sequence_number <= flow_window->last_delivered)
         {
-			clib_warning("IN;%u", *packet_sequence_number - flow_window->last_delivered));
+			clib_warning("IN;%u", *packet_sequence_number - flow_window->last_delivered);
 			/* variable used to check the value of bits */
               variable_to_check = 0x00;
               /* Distance between the packet sequence number and the last delivered */
@@ -179,7 +179,7 @@ end_decaps_srh_processing (vlib_main_t *vm, vlib_node_runtime_t * node,
 	}
         else 
         {
-			clib_warning("NEW;%u", *packet_sequence_number - flow_window->last_delivered));
+			clib_warning("NEW;%u", *packet_sequence_number - flow_window->last_delivered);
 		  /* The packet sequence number is greater than the last delivered */
           /* Distance between the packet sequence number and the last delivered */
           difference = *packet_sequence_number - flow_window->last_delivered;
